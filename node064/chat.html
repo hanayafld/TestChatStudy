@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Chat</title>
+    <style>
+        .chat_log {
+            width: 95%;
+            height: 200px;
+        }
+
+        .name {
+            width: 10%;
+        }
+
+        .message {
+            width: 70%;
+        }
+
+        .chat {
+            width: 10%;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="//code.jquery.com/jquery-1.11.1.js"></script>
+    <div>
+            <label id="uid">uid: </label>
+    </div>
+    <div>
+        <textarea id="chatlog" class="chat_log"></textarea>
+    </div>
+    <form id="chat">
+        <input type="text" id="name" class="name">
+        <input type="text" id="message" class="message">
+        <input type="submit" class="chat" value="chat">
+    </form>
+    <form id="join">
+        <input type="text" id="clanName" class="clanName">
+        <input type="submit" id="joinClan" value="join clan">
+    </form>
+    <form id="create">
+            <input type="text" id="clanName" class="clanName">
+            <input type="submit" id="createClan" value="create clan">
+    </form>
+    <div id="box" class="box">
+            
+        <script>
+            //uuid 만들기
+            function guid() {
+                function s4() {
+                    return ((1 + Math.random()) * 0x10000 | 0).toString(16).substring(1);
+                }
+                return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+            }
+
+            function connect()
+            {
+                const socket = io();
+                alert(socket);
+            }
+
+            let uid;
+
+            $(document).ready(function()
+            {
+                uid = guid();
+                console.log(uid);
+                $('#uid').text(uid);
+                
+            })
+
+            function show_uuid() {
+                document.getElementById('uuid').value = guid();
+            }
+
+            $('#joinClan').on('submit', function (e) {
+                let info = {
+                    uid: guid(),
+                    nickName: $('#name').val(),
+                    clanName: $('#clanName').val()
+                };
+                console.log(`info : ${info.uid}, ${info.nickName}, ${info.clanName}`);
+                alert(`info : ${info.uid}, ${info.nickName}, ${info.clanName}`);
+            });
+
+            $('#createClan').on('submit', (e)=>{
+                let req_create_clan = {};
+                const clanName = $('#createClanName').val();
+                req_create_clan.clanName = clanName;
+                req_create_clan.uid = uid;
+                let json = JSON.stringify(req_create_clan);
+                alert(json);
+            });
+
+            $('#chat').on('submit', (e) => {
+
+            });
+        </script>
+    </div>
+</body>
+
+</html>
