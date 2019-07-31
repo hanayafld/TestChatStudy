@@ -21,6 +21,14 @@
         .chat {
             width: 10%;
         }
+        
+        .createClanDesc {
+            width: 95%;
+            height: 100px;
+            resize: none;
+            box-sizing: border-box;
+            padding: 12px 20px;
+        }
     </style>
 </head>
 
@@ -42,8 +50,14 @@
         <input type="text" id="clanName" class="clanName">
         <input type="submit" id="joinClan" value="join clan">
     </form>
-    <form id="create">
-            <input type="text" id="clanName" class="clanName">
+    <form id="createClan">
+            <div>
+                클랜명: <input type="text" id="createClanName" class="createClanName">
+            </div>
+            <div>
+                [클랜 정보]
+                <input type="text" id="createClanDesc" class="createClanDesc">
+            </div>
             <input type="submit" id="createClan" value="create clan">
     </form>
     <div id="box" class="box">
@@ -68,7 +82,7 @@
             $(document).ready(function()
             {
                 uid = guid();
-                console.log(uid);
+                //console.log(uid);
                 $('#uid').text(uid);
                 
             })
@@ -88,12 +102,17 @@
             });
 
             $('#createClan').on('submit', (e)=>{
+                e.preventDefault();
                 let req_create_clan = {};
                 const clanName = $('#createClanName').val();
+                const clanDesc = $('#createClanDesc').val();
                 req_create_clan.clanName = clanName;
+                req_create_clan.clanDesc = clanDesc;
                 req_create_clan.uid = uid;
-                let json = JSON.stringify(req_create_clan);
-                alert(json);
+                console.log(req_create_clan);
+                $.post( "http://localhost:3301/clan", req_create_clan, function( data ) {
+                    console.log(data);
+                });
             });
 
             $('#chat').on('submit', (e) => {
