@@ -36,7 +36,8 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="//code.jquery.com/jquery-1.11.1.js"></script>
     <div>
-            <label id="uid">uid: </label>
+        <label id="uid">uid: </label>
+        <input type="text" id="userName">
     </div>
     <div>
         <textarea id="chatlog" class="chat_log"></textarea>
@@ -60,6 +61,11 @@
             </div>
             <input type="submit" id="createClan" value="create clan">
     </form>
+
+    <input type="button" id="btnClanList" value="클랜 보기">
+    
+    <div id="clanList"></div>
+
     <div id="box" class="box">
             
         <script>
@@ -91,6 +97,18 @@
                 document.getElementById('uuid').value = guid();
             }
 
+            function refreshClanListDiv(clanList){
+                $('#clanList').empty();
+                $('#clanList').append('<ul id="listView" data-role="listview">');
+                clanList.forEach(element => {
+                    $('#listView').append('<div>');
+                    $('#listView').append(`<li style="display:inline-block;">${element.clan_code}</li>`);
+                    $('#listView').append('<input type="button" id="btnJoinClan" value="클랜가입">');
+                    $('#listView').append('</div>');
+                });
+                $('#clanList').append('</ul>');
+            }
+
             $('#joinClan').on('submit', function (e) {
                 let info = {
                     uid: guid(),
@@ -106,12 +124,20 @@
                 let req_create_clan = {};
                 const clanName = $('#createClanName').val();
                 const clanDesc = $('#createClanDesc').val();
+                const userName = $('#userName').val();
                 req_create_clan.clanName = clanName;
                 req_create_clan.clanDesc = clanDesc;
                 req_create_clan.uid = uid;
-                console.log(req_create_clan);
+                req_create_clan.userName = userName;
+                //console.log(req_create_clan);
                 $.post( "http://localhost:3301/clan", req_create_clan, function( data ) {
-                    console.log(data);
+                    refreshClanListDiv(data.clanList);
+                });
+            });
+
+            $('#btnClanList').click((e)=>{
+                $.get("http://localhost:3301/clan", (data)=>{
+                    refreshClanListDiv(data.clanList);
                 });
             });
 
