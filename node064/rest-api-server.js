@@ -17,28 +17,97 @@ app.get('/', (req, res)=>{
     res.end('restAPI서버 정상 작동 중');
 });
 
-app.get('/clan', (req, res)=>{
-    const pool = mysql_dbc.pool();
+
+
+//클랜 리스트 보기 
+app.get('/clan', async (req, res)=>{
+    
+    let pool = mysql_dbc.pool();
     mysql_dbc.connectPool(pool, (err, con)=>{
-        if(err) {
-            con.release();
-            throw err;
+        if(err){
+            res.json({ cmd: 600 });
         }else{
-            let query = "select * from clans";
-            con.query(query, (err, results, fields)=>{
-
-                console.log(results);
-
-                con.release();
-                if(err) { throw err; }
-                res.json({
-                    cmd: 200,
-                    clanList: results
-                });
+            let query = 'select * from clans';
+            con.query(query, (err, results, fiels)=>{
+                if(err){
+                    res.json({ cmd: 600 });
+                }else{
+                    res.json({ cmd: 200, arrClanInfos: results });
+                }
             });
         }
     });
+
 });
+
+
+
+
+
+
+app.post('/clan/2', (req, res)=>{
+    const clanCode = req.body.clan_code;
+    console.log(clanCode);
+    let pool = mysql_dbc.pool();
+    mysql_dbc.connectPool(pool, (err, con)=>{
+        if(err){
+            con.release();
+            throw err;
+        }else{
+            con.on('error', (err)=>{
+
+            });
+
+            let query = 'select * from clan_members where clan_code = ?';
+            con.query(query, (err, results, fields)=>{
+
+            });
+        }
+    });
+
+    res.json({
+        cmd: 200
+    });
+});
+
+
+app.post('/clan/1', (req, res)=>{
+    const clan_member_id = req.body.clan_member_id;
+    const clan_code = req.body.clan_code;
+    const clan_member_name = req.body.clan_member_name;
+    const role = 1;
+    const date = moment().format().slice(0, 19).replace('T', ' ');
+
+    const pool = mysql_dbc.pool();
+    mysql_dbc.connectPool(pool, (err, con)=>{
+
+        con.beginTransaction((err)=>{
+            if(err) { 
+                con.release();
+                throw err; 
+            }
+            con.on('error', (err)=>{
+                con.rollback();
+                con.release();
+                res.json({cmd: 600});
+            });
+            let query = 'insert into clan_members (clan_code, clan_member_id, clan_member_name, role, date) values (?,?,?,?,?)';
+            con.query(query, [clan_code, clan_member_id, clan_member_name, role, date], (err, results, fields)=>{
+                query = 'update clans set clan_member_count = (select count(*) from clan_members) where clan_code=?';
+                con.query(query, [clan_code], (err, results, fields)=>{
+                    query = 'select * from clans';
+                    con.query(query, (err, results, fields)=>{
+                        con.commit();
+                        con.release();
+                        console.log(results);
+                        res.json({cmd: 200, arrClanInfos: results });
+                    });
+                });
+            });
+        });
+    });
+});
+
 
 app.post('/clan', (req, res)=>{
     //clan_code, clan_name, clan_master_id, clan_desc, DATE 

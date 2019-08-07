@@ -2,12 +2,36 @@
 <html>
     <head>
         <meta charset="utf-8">
+        <script src="//code.jquery.com/jquery-1.11.1.js"></script>
     </head>
     <body>
-        <ul id="listView" data-role="listview">
-            <li>커피</li>
-            <li>차</li>
-            <li>우유</li>
-        </ul>
+        
+        <div id="clanListDiv"></div>
+
+        <div>
+            <input type="button" id="btnClanList" value="클랜보기">
+            <script>
+                function refreshClanList (clanList){
+                    $('#clanListDiv').empty();
+                    $('#clanListDiv').append('<table id="clanCodeTable">');
+                    clanList.forEach(clanInfo => {
+                        console.log(clanInfo);
+                        $('#clanCodeTable').append('<tr id="tdClanCode">');    
+                        $('#tdClanCode').append(`<th>${clanInfo.clan_code}</th>`);
+                        $('#tdClanCode').append(`<th>${clanInfo.clan_name}</th>`);
+                        $('#tdClanCode').append(`<th>${clanInfo.date}</th>`);
+                        $('#clanCodeTable').append("</tr>");    
+                    });    
+                    $('#clanListDiv').append("</table>");
+                }
+
+                $('#btnClanList').click((e)=>{
+                    $.get('http://localhost:5050/clan', (data)=>{
+                        console.log(data);
+                        refreshClanList(data.clanList);
+                    });
+                });
+            </script>
+        </div>
     </body>
 </html>

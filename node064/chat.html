@@ -29,6 +29,21 @@
             box-sizing: border-box;
             padding: 12px 20px;
         }
+
+        table{
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        td, th {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        tr:nth-child(even){
+            background-color: #dddddd;
+        }
     </style>
 </head>
 
@@ -38,6 +53,7 @@
     <div>
         <label id="uid">uid: </label>
         <input type="text" id="userName">
+        <button type="button" id="btnLogin">로그인</button>
     </div>
     <div>
         <textarea id="chatlog" class="chat_log"></textarea>
@@ -62,9 +78,21 @@
             <input type="submit" id="createClan" value="create clan">
     </form>
 
-    <input type="button" id="btnClanList" value="클랜 보기">
+    <div>
+        <input type="button" id="btnClanList" value="클랜 보기">
+    </div>
     
-    <div id="clanList"></div>
+    
+    <div id="clanListDiv" style="width:50%; float:left"></div>
+    <div id="clanInfoDiv" style="width:50%; float:left">
+        <table>
+            <tr>
+                <th>맴버 이름</th>
+                <th>맴버 ID</th>
+                <th>가입 날짜</th>
+            </tr>
+        </table>
+    </div>
 
     <div id="box" class="box">
             
@@ -90,23 +118,85 @@
                 uid = guid();
                 //console.log(uid);
                 $('#uid').text(uid);
-                
+                $('#clanInfoDiv').prop('disabled', true);
             })
 
             function show_uuid() {
                 document.getElementById('uuid').value = guid();
             }
 
-            function refreshClanListDiv(clanList){
-                $('#clanList').empty();
-                $('#clanList').append('<ul id="listView" data-role="listview">');
-                clanList.forEach(element => {
-                    $('#listView').append('<div>');
-                    $('#listView').append(`<li style="display:inline-block;">${element.clan_code}</li>`);
-                    $('#listView').append('<input type="button" id="btnJoinClan" value="클랜가입">');
-                    $('#listView').append('</div>');
+            function joinClan(data){
+                $.post('http://localhost:3301/clan/1', data, (res)=>{
+                    console.log(res);
+                    refreshClanListDiv(res.arrClanInfos);
                 });
-                $('#clanList').append('</ul>');
+            }
+
+            function getClanInfo(clanCode){
+                let req_clan_info = {
+                    clan_code: clanCode
+                };
+                $.post('http://localhost:3301/clan/2', req_clan_info, (res)=>{
+                    console.log(res);
+                });
+            }
+
+            function refreshClanInfoDiv(clanCode, arrClanMemberInfos){
+
+            }
+
+            function refreshClanListDiv(arrClanInfos){
+                $('#clanListDiv').empty();
+                $('#clanListDiv').append('<table id="clanCodeTable">');
+                $('#clanCodeTable').append(`<tr id="trName">`);    
+                $('#trName').append(`<th>클랜명</th>`);
+                $('#trName').append(`<th>클랜 인원</th>`);
+                $('#trName').append(`<th>클랜 정보</th>`);
+                $('#trName').append(`<th>클랜 가입</th>`);
+                $('#clanCodeTable').append(`<tr>`);    
+
+                for(let i = 0; i<arrClanInfos.length; i++){
+                    let trId = "trClan" + i;
+                    let clanInfo = arrClanInfos[i];
+                    let btnJoinId = "btnJoinClan_" + clanInfo.clan_code;
+                    let btnClanInfoId = "btnClanInfo_" + clanInfo.clan_code;
+                    let thCapacityId = "thCapacityId_" + clanInfo.clan_code;
+                    let date = clanInfo.date.slice(0, 19).replace('T', ' ');
+                    $('#clanCodeTable').append(`<tr id=${trId}>`);    
+                    //$(`#${trId}`).append(`<th>${clanInfo.clan_code}</th>`);
+                    $(`#${trId}`).append(`<th>${clanInfo.clan_name}</th>`);
+                    //$(`#${trId}`).append(`<th>${date}</th>`);
+                    $(`#${trId}`).append(`<th id="${thCapacityId}">${clanInfo.clan_member_count}/${clanInfo.clan_member_capacity}</th>`);
+                    $(`#${trId}`).append(`<th><input type="button" id="${btnClanInfoId}" value="클랜 정보"></th>`);
+                    $(`#${trId}`).append(`<th><input type="button" id="${btnJoinId}" value="클랜가입"></th>`);
+                    $(`#${btnClanInfoId}`).click((e)=>{
+                        alert("클랜 정보 보기:" + clanInfo.clan_code);
+
+                        //클랜 코드 
+
+                        //클랜 맴버 표시 
+                        getClanInfo(clanInfo.clan_code);
+
+                    });
+                    $(`#${btnJoinId}`).click((e)=>{
+
+                        //클랜 가입 (맴버)
+                        const url = "http://localhost:3301/clan/1";
+                        let clanCode = clanInfo.clan_code;
+                        let clanMemberId = uid;
+                        let clanMemberName = $('#userName').val();
+                        //role, date : 서버 처리 
+
+                        joinClan({
+                            clan_code: clanCode,
+                            clan_member_id: clanMemberId,
+                            clan_member_name: clanMemberName
+                        });
+
+                    });
+                    $('#clanCodeTable').append("</tr>");    
+                }
+                $('#clanListDiv').append("</table>");
             }
 
             $('#joinClan').on('submit', function (e) {
@@ -135,9 +225,15 @@
                 });
             });
 
+            //버튼 이벤트 
+            $('#btnLogin').click((e)=>{
+                alert('로그인 되었습니다.');
+                $('#userName').attr("readonly", true);
+            });
+
             $('#btnClanList').click((e)=>{
                 $.get("http://localhost:3301/clan", (data)=>{
-                    refreshClanListDiv(data.clanList);
+                    refreshClanListDiv(data.arrClanInfos);
                 });
             });
 
