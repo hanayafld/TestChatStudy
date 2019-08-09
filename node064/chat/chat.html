@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.js"></script>
+    </head>
+    <body>
+        <input type="text" id="inputName"/>
+        <button type="button" id="btnConnect">접속</button>
+        <button type="button" id="btnDisconnect">접속 종료</button>
+        <br/>
+        <input type="text" id="inputRoomName1"/>
+        <button type="button" id="btnCreateRoom">채팅방 생성</button>
+        <br/>
+        <input type="text" id="inputRoomName2"/>
+        <button type="button" id="btnJoinRoom">채팅방 입장</button>
+        <br/>
+        <input type="text" id="inputMessage"/>
+        <button type="button" id="btnMessageSend">전송</button>
+        <div id="divMessage"></div>
+        <script>
+            let socket;
+
+            $('#btnConnect').click((e)=>{
+                console.log("채팅 서버에 접속 합니다.");
+                socket = io('http://localhost:3030');
+
+                //서버로 보내는 부분 
+                socket.emit('join', {
+                    name: $('#inputName').val()
+                });
+
+                //서버 에서 받는 부분 
+                socket.on('welcome', (data)=>{
+                    console.log(data.name + "님이 접속 했습니다.");  
+                    let message = `${data.name} 님이 접속 했습니다.`;
+                    $('#divMessage').append(message + "<br/>");
+                });
+
+                socket.on('disconnect', (data)=>{
+                    console.log("접속 종료: ", data);
+                });
+
+                socket.on('sendMessage', (data)=>{
+                    console.log(data.name, data.message);
+                    $('#divMessage').append(data.name + " : " + data.message + "<br/>");
+                });
+
+                socket.on('createRoom', (data)=>{
+                    $('#divMessage').append(data.roomName + "방이 생성되었습니다." + "<br/>");
+                    const name = $('#inputName').val();
+                    $('#divMessage').append(name + "님이 입장 했습니다. " + "<br/>");
+                });
+
+                socket.on('joinRoom', (data)=>{
+                    console.log(data.name + "님이 입장 했습니다.");
+                    $('#divMessage').append(data.name + "님이 입장 했습니다. " + "<br/>");
+                });
+                
+                // socket.on('news', (data)=>{
+                //     console.log(data);
+                //     socket.emit('my other event', { my: 'data' });
+                // });
+            });
+
+            
+            $('#btnJoinRoom').click((e)=>{
+                const roomName = $('#inputRoomName2').val();
+                const name = $('#inputName').val();
+                console.log(roomName);
+                socket.emit('joinRoom', { roomName: roomName, name: name});
+            });
+
+            $('#btnCreateRoom').click((e)=>{
+                const roomName = $('#inputRoomName1').val();
+                const name = $('#inputName').val();
+                console.log(roomName, name);
+                socket.emit('createRoom', { roomName: roomName, name: name });
+            });
+
+            $('#btnDisconnect').click((e)=>{
+                socket.close();
+            });
+
+            $('#btnMessageSend').click((e)=>{
+                const name = $('#inputName').val();
+
+                let roomName;
+
+                console.log($('#inputRoomName2').val() === '' );
+
+                if( $('#inputRoomName2').val() === ''){
+                    roomName = $('#inputRoomName1').val();
+                }else{
+                    roomName = $('#inputRoomName2').val();
+                }
+                
+                const msg = $('#inputMessage').val();
+                let send_message = {
+                    name: name, 
+                    roomName: roomName,
+                    message: msg
+                };
+                socket.emit('sendMessage', send_message);
+            });
+        </script>
+    </body>
+</html>

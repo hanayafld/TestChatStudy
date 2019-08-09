@@ -18,6 +18,56 @@ app.get('/', (req, res)=>{
 });
 
 
+//로그인 
+app.post('/login', (req, res)=>{
+    console.log(req.body);  //userName
+
+    let pool = mysql_dbc.pool();
+    const user_id = clan.getGuid();
+    const user_name = req.body.userName;
+    const date = moment().format().slice(0, 19).replace('T', ' ');
+    const selectClanCode = (con, clan_member_id)=>{
+        query = 'select clan_code from clan_members where clan_member_id = ?';
+        con.query(query, [clan_member_id], (err, results, fields)=>{
+
+            console.log(results, results.length);
+
+            con.release();
+
+            res.json({
+                cmd: 200,
+                user_id: user_id,
+                clan_code: (results.length > 0) ? results[0].clan_code: null
+            });
+        });
+    };
+
+    mysql_dbc.connectPool(pool, (err, con)=>{
+        con.on('error', (err)=>{
+            con.release();
+            res.json({cmd: 600});
+        });
+        let query = 'select count(*) as isSignUp, user_id from users where user_name=?';
+        con.query(query, [user_name], (err, results, fields)=>{
+            console.log("isSignUp:", results[0].isSignUp);
+            if( results[0].isSignUp > 0){
+                selectClanCode(con, results[0].user_id);
+
+            }else{
+                query = 'insert into users(user_id, user_name, date) values(?,?,?)';
+                con.query(query, [user_id, user_name, date], (err, results, fields)=>{
+                    console.log(results);
+                    selectClanCode(con, results[0].user_id);
+                });
+            }
+        });
+    });
+
+    console.log(user_id, user_name, date);
+});
+
+
+
 
 //클랜 리스트 보기 
 app.get('/clan', async (req, res)=>{
@@ -52,25 +102,28 @@ app.post('/clan/2', (req, res)=>{
     mysql_dbc.connectPool(pool, (err, con)=>{
         if(err){
             con.release();
+            res.json({
+                cmd: 600
+            });
             throw err;
         }else{
             con.on('error', (err)=>{
-
+                console.log(err);
             });
 
             let query = 'select * from clan_members where clan_code = ?';
-            con.query(query, (err, results, fields)=>{
-
+            con.query(query, [clanCode], (err, results, fields)=>{
+                console.log(results);
+                res.json({
+                    cmd: 200, 
+                    arrClanMemberInfos: results
+                });
             });
         }
     });
-
-    res.json({
-        cmd: 200
-    });
 });
 
-
+//클랜가입 (맴버)
 app.post('/clan/1', (req, res)=>{
     const clan_member_id = req.body.clan_member_id;
     const clan_code = req.body.clan_code;
@@ -108,77 +161,93 @@ app.post('/clan/1', (req, res)=>{
     });
 });
 
+//클랜 생성 (마스터)
+//clan_members
+// clan_code
+// clan_member_id
+// clan_member_name
+// role
+// date
+
+//clans
+// clan_code
+// clan_name
+// clan_master_id
+// clan_desc
+// clan_member_count
+// clan_member_capacity
+// date
+
+/*
+set autocommit=0;
+start transaction;
+insert into clan_members (clan_code, clan_member_id, clan_member_name, role, date) 
+values ("kljds", "kjlfjdl", "홍길동", 1, now());
+#클랜 추가 
+insert into clans(clan_code, clan_name, clan_master_id, clan_desc, clan_member_count, clan_member_capacity, date)
+values("kljds", "홍길동 클랜", "kjlfjdl", "홍길동 클랜 입니다.", 1, 15, now());
+commit;*/
 
 app.post('/clan', (req, res)=>{
-    //clan_code, clan_name, clan_master_id, clan_desc, DATE 
-    const clanCode = clan.getClanCode(6);
-    const clanName = req.body.clanName;
-    const uid = req.body.uid;
-    const userName = req.body.userName;
-    const clanDesc = req.body.clanDesc;
-    const now = moment().format().slice(0, 19).replace('T', ' ');
-    let arrQueryData = [clanCode, clanName, uid, clanDesc, now];
-    const pool = mysql_dbc.pool();
+    let clan_member_id = req.body.uid;
+    let clan_code = clan.getClanCode(6);
+    let clan_name = req.body.clanName;
+    let clan_member_name = req.body.userName;
+    let clan_desc = req.body.clanDesc;
+    let role = 1;
+    const date = moment().format().slice(0, 19).replace('T', ' ');
+    let pool = mysql_dbc.pool();
     mysql_dbc.connectPool(pool, (err, con)=>{
-        if(err){
-            console.error(err);
-            pool.release();
+        if(err) {
             res.json({
-                cmd: 9988
+                cmd: 600
             });
+            con.release();
+            throw err;
         }else{
-            console.info('connected!');
-            //쿼리 실행 
             con.beginTransaction((err)=>{
                 if(err) {
                     con.release();
+                    res.json({cmd: 600});
                     throw err;
                 }
-                let query = 'insert into clan_members(clan_code, clan_member_id, clan_member_name, date) values(?,?,?,?)';
-                con.query(query, [clanCode, uid, userName, now], (err, results, fields)=>{
-                    if(err) {
-                        return con.rollback(()=>{
-                            con.release();
-                            throw error;       
-                        });
+
+                con.on('error', (err)=>{
+                    
+                    console.log(err);
+
+                    if(err){
+                        con.rollback();
+                        con.release();
+                        req.json({cmd: 600});
                     }
-                    query = 'INSERT INTO clans ( clan_code, clan_name, clan_master_id, clan_desc, DATE ) VALUES(?,?,?,?,?)';    
-                    con.query(query, arrQueryData, (error, results, fields)=>{
-                        if(error){
-                            return con.rollback(()=>{
-                                con.release();
-                                throw error;       
-                            });
-                        }
-                        query = 'select * from clans';    
-                        con.query(query, (error, results, fields)=>{
-                            if(error){
-                                return con.rollback(()=>{
-                                    con.release();
-                                    throw error;
-                                });
-                            }
-                            con.commit((err)=>{
-                                if(err){
-                                    return con.rollback(()=>{
-                                        con.release();
-                                        throw err;
-                                    });
-                                }
-                                console.log('success');
-                                con.release();
-    
-                                res.json({
-                                    cmd: 200,
-                                    clanList: results
-                                });
-    
+                });
+
+                let query = 'insert into clan_members (clan_code, clan_member_id, clan_member_name, role, date) values(?,?,?,?,?)';
+                con.query(query, [clan_code, clan_member_id, clan_member_name, role, date], (err, results1, fields)=>{
+                    
+                    if(err){
+                        console.log(err);
+                        throw err;
+                    }
+                    console.log('맴버 등록 성공:', results1);
+
+                    query = 'insert into clans(clan_code, clan_name, clan_master_id, clan_desc, clan_member_count, clan_member_capacity, date) values(?,?,?,?,?,?,?)';
+                    con.query(query, [clan_code, clan_name, clan_member_id, clan_desc, 1, 15, date], (err, results2, fields)=>{
+                        
+                        query = 'select * from clans';
+                        con.query(query, (err, results3, fields)=>{
+                            console.log('클랜 생성 성공:', results3);
+                            con.commit();
+                            con.release();
+                            res.json({
+                                cmd: 200,
+                                myClanCode: clan_code,
+                                arrClanInfos: results3
                             });
                         });
                     });
-                });
-
-                
+                });    
             });
         }
     });

@@ -51,9 +51,10 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="//code.jquery.com/jquery-1.11.1.js"></script>
     <div>
-        <label id="uid">uid: </label>
-        <input type="text" id="userName">
+        유저명: <input type="text" id="userName">
         <button type="button" id="btnLogin">로그인</button>
+        <label id="labelUID"></label>
+        <label id="labelClanCode"></label>
     </div>
     <div>
         <textarea id="chatlog" class="chat_log"></textarea>
@@ -63,10 +64,6 @@
         <input type="text" id="message" class="message">
         <input type="submit" class="chat" value="chat">
     </form>
-    <form id="join">
-        <input type="text" id="clanName" class="clanName">
-        <input type="submit" id="joinClan" value="join clan">
-    </form>
     <form id="createClan">
             <div>
                 클랜명: <input type="text" id="createClanName" class="createClanName">
@@ -75,7 +72,7 @@
                 [클랜 정보]
                 <input type="text" id="createClanDesc" class="createClanDesc">
             </div>
-            <input type="submit" id="createClan" value="create clan">
+            <input type="submit" id="createClan" value="클랜 생성">
     </form>
 
     <div>
@@ -83,7 +80,17 @@
     </div>
     
     
-    <div id="clanListDiv" style="width:50%; float:left"></div>
+    <div id="clanListDiv" style="width:50%; float:left">
+        <table>
+            <tr>
+                <th>클랜 코드</th>
+                <th>클랜 명</th>
+                <th>클랜 인원</th>
+                <th>클랜 정보</th>
+                <th>클랜 가입/탈퇴</th>
+            </tr>
+        </table>
+    </div>
     <div id="clanInfoDiv" style="width:50%; float:left">
         <table>
             <tr>
@@ -111,19 +118,18 @@
                 alert(socket);
             }
 
-            let uid;
+            //let uid;
+            let myClanCode;
 
             $(document).ready(function()
             {
-                uid = guid();
-                //console.log(uid);
-                $('#uid').text(uid);
-                $('#clanInfoDiv').prop('disabled', true);
+                //uid = guid();
+                //$('#uid').text(uid);
             })
 
-            function show_uuid() {
-                document.getElementById('uuid').value = guid();
-            }
+            // function show_uuid() {
+            //     document.getElementById('uuid').value = guid();
+            // }
 
             function joinClan(data){
                 $.post('http://localhost:3301/clan/1', data, (res)=>{
@@ -138,37 +144,71 @@
                 };
                 $.post('http://localhost:3301/clan/2', req_clan_info, (res)=>{
                     console.log(res);
+                    let arrClanMemberInfos = res.arrClanMemberInfos;
+                    refreshClanInfoDiv(clanCode, arrClanMemberInfos);
                 });
             }
 
             function refreshClanInfoDiv(clanCode, arrClanMemberInfos){
 
+                console.log(clanCode, arrClanMemberInfos);
+
+                $('#clanInfoDiv').empty();
+                $('#clanInfoDiv').append('<table id="clanMembersTable">');
+                $('#clanMembersTable').append('<tr id="trTitle">');
+                $('#trTitle').append('<th>맴버 이름</th>');
+                $('#trTitle').append('<th>맴버 ID</th>');
+                $('#trTitle').append('<th>가입 날짜</th>');
+                $('#clanMembersTable').append('</tr>');
+                let idx = 0;
+                arrClanMemberInfos.forEach(memberInfo => {
+                    let trId = "tr_" + idx++;
+                    $('#clanMembersTable').append(`<tr id=${trId}>`);
+                    $(`#${trId}`).append(`<th>${memberInfo.clan_member_name}</th>`);
+                    $(`#${trId}`).append(`<th>${memberInfo.clan_member_id}</th>`);
+
+                    let date = memberInfo.date.slice(0, 19).replace('T', ' ');
+
+                    $(`#${trId}`).append(`<th>${date}</th>`);
+                    $('#clanMembersTable').append('</tr>');
+                });
             }
 
             function refreshClanListDiv(arrClanInfos){
                 $('#clanListDiv').empty();
                 $('#clanListDiv').append('<table id="clanCodeTable">');
                 $('#clanCodeTable').append(`<tr id="trName">`);    
+                $('#trName').append(`<th>클랜 코드</th>`);
                 $('#trName').append(`<th>클랜명</th>`);
                 $('#trName').append(`<th>클랜 인원</th>`);
                 $('#trName').append(`<th>클랜 정보</th>`);
-                $('#trName').append(`<th>클랜 가입</th>`);
+                $('#trName').append(`<th>클랜 가입/탈퇴</th>`);
                 $('#clanCodeTable').append(`<tr>`);    
 
                 for(let i = 0; i<arrClanInfos.length; i++){
                     let trId = "trClan" + i;
                     let clanInfo = arrClanInfos[i];
                     let btnJoinId = "btnJoinClan_" + clanInfo.clan_code;
+                    let btnLeaveClanId = "btnLeaveClanId_" + clanInfo.clan_code;
                     let btnClanInfoId = "btnClanInfo_" + clanInfo.clan_code;
                     let thCapacityId = "thCapacityId_" + clanInfo.clan_code;
                     let date = clanInfo.date.slice(0, 19).replace('T', ' ');
                     $('#clanCodeTable').append(`<tr id=${trId}>`);    
-                    //$(`#${trId}`).append(`<th>${clanInfo.clan_code}</th>`);
+                    $(`#${trId}`).append(`<th>${clanInfo.clan_code}</th>`);
                     $(`#${trId}`).append(`<th>${clanInfo.clan_name}</th>`);
                     //$(`#${trId}`).append(`<th>${date}</th>`);
                     $(`#${trId}`).append(`<th id="${thCapacityId}">${clanInfo.clan_member_count}/${clanInfo.clan_member_capacity}</th>`);
                     $(`#${trId}`).append(`<th><input type="button" id="${btnClanInfoId}" value="클랜 정보"></th>`);
                     $(`#${trId}`).append(`<th><input type="button" id="${btnJoinId}" value="클랜가입"></th>`);
+
+                    //클랜 탈퇴 
+                    $(`#${btnLeaveClanId}`).click((e)=>{
+
+
+                        
+                    });
+
+                    //클랜 정보 보기 
                     $(`#${btnClanInfoId}`).click((e)=>{
                         alert("클랜 정보 보기:" + clanInfo.clan_code);
 
@@ -178,36 +218,38 @@
                         getClanInfo(clanInfo.clan_code);
 
                     });
-                    $(`#${btnJoinId}`).click((e)=>{
 
-                        //클랜 가입 (맴버)
-                        const url = "http://localhost:3301/clan/1";
-                        let clanCode = clanInfo.clan_code;
-                        let clanMemberId = uid;
-                        let clanMemberName = $('#userName').val();
-                        //role, date : 서버 처리 
+                    //클랜 가입 
+                    $(`#${btnJoinId}`).on("click", {clan_code: clanInfo.clan_code}, (e)=>{
 
-                        joinClan({
-                            clan_code: clanCode,
-                            clan_member_id: clanMemberId,
-                            clan_member_name: clanMemberName
-                        });
+                        let userName = $('#userName').val();
+                        
+                        if(userName === ''){
+                            alert('로그인을 해주세요.');
+                        }else{
 
+                            alert(e.data.clan_code);
+                            //클랜 가입 (맴버)
+                            // const url = "http://localhost:3301/clan/1";
+                            // let clanCode = clanInfo.clan_code;
+                            // let clanMemberId = uid;
+                            // let clanMemberName = userName;
+
+                            // selectedClanCode = clanCode;
+
+                            // joinClan({
+                            //     clan_code: clanCode,
+                            //     clan_member_id: clanMemberId,
+                            //     clan_member_name: clanMemberName
+                            // });
+                        }
+
+                        
                     });
                     $('#clanCodeTable').append("</tr>");    
                 }
                 $('#clanListDiv').append("</table>");
             }
-
-            $('#joinClan').on('submit', function (e) {
-                let info = {
-                    uid: guid(),
-                    nickName: $('#name').val(),
-                    clanName: $('#clanName').val()
-                };
-                console.log(`info : ${info.uid}, ${info.nickName}, ${info.clanName}`);
-                alert(`info : ${info.uid}, ${info.nickName}, ${info.clanName}`);
-            });
 
             $('#createClan').on('submit', (e)=>{
                 e.preventDefault();
@@ -221,14 +263,38 @@
                 req_create_clan.userName = userName;
                 //console.log(req_create_clan);
                 $.post( "http://localhost:3301/clan", req_create_clan, function( data ) {
-                    refreshClanListDiv(data.clanList);
+                    
+                    myClanCode = data.myClanCode;
+
+                    refreshClanListDiv(data.arrClanInfos);
                 });
             });
 
             //버튼 이벤트 
             $('#btnLogin').click((e)=>{
-                alert('로그인 되었습니다.');
-                $('#userName').attr("readonly", true);
+
+                let url = "http://localhost:3301/login";
+                let req_login = {
+                    userName: $('#userName').val()
+                };
+                $.post(url, req_login, (res)=>{
+                    if(res.cmd === 200){
+                        alert('로그인 되었습니다.');
+                        console.log(res.user_id, res.clan_code);
+
+                        myClanCode = res.clan_code; //클랜 가입 되어 있지 않다면 null
+                        $('#labelUID').text(res.user_id);
+                        if(myClanCode != null){
+                            $('#labelClanCode').text(myClanCode);
+                        }
+                        $('#userName').attr("readonly", true);
+                    }else{
+                        alert("로그인 실패 , 에러코드: [" + res.cmd + "]");
+                    }
+                }).fail((res)=>{
+                    console.log(res.status);
+                });
+
             });
 
             $('#btnClanList').click((e)=>{
